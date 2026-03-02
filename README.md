@@ -21,7 +21,7 @@ An online retail business launched multiple digital marketing campaigns across s
 |---|----------|
 | 1 | Where exactly are customers dropping off in the purchase funnel, and which products and geographies are most affected? |
 | 2 | Which content types and products are driving the highest click-through and engagement? |
-| 3 | What are customers saying in their reviews, and does sentiment vary by product, country, or age group? |
+| 3 | What are customers saying in their reviews, and does sentiment vary by product? |
 | 4 | Who are the customers — by age, gender, and geography — and are campaigns targeting the right segments? |
 
 ---
@@ -40,20 +40,20 @@ retail-marketing-analytics/
 │   └── journey.csv             # Customer purchase journey events
 │
 ├── notebooks/
-│   └── data_cleaning_preprocessing.ipynb   # Full Python pipeline
+│   └── Marketing Campaign Analysis.ipynb   # Full Python pipeline
 │
 ├── sql/
-│   └── marketing_analysis_queries.sql      # 9 analytical queries
+│   └── Marketing Analysis Query.sql     # 9 analytical queries 
 │
 ├── outputs/
-│   ├── cleaned_customers_geo.csv
-│   ├── cleaned_engagement.csv
-│   ├── cleaned_journey.csv
-│   ├── cleaned_products.csv
-│   └── cleaned_reviews.csv     # Includes sentiment scores & categories
+│   ├── customers_geo.csv
+│   ├── engagement.csv
+│   ├── journey.csv
+│   ├── products.csv
+│   └── reviews.csv     # Includes sentiment scores & categories
 │
 ├── dashboard/
-│   └── Retail_Marketing_Analytics.pbix     # Power BI report file
+│   └── Marketing Analysis Dashboard.pbix"  # Power BI report file
 │
 └── README.md
 ```
@@ -107,30 +107,16 @@ Raw CSVs  ──►  Python (Clean + Feature Engineering + NLP)
 - 71 duplicate rows removed
 - 613 nulls in `Duration` retained intentionally — all correspond to `Drop-Off` actions where no duration exists by definition
 
-### Sentiment Analysis Pipeline (VADER + Star Ratings)
+### Sentiment Analysis 
 
-```python
-# Step 1 — Compute compound score (-1 to +1)
-reviews["Sentiment_Score"] = reviews["ReviewText"].apply(get_sentiment_score)
-
-# Step 2 — Categorize using dual signal: text score + star rating
-reviews["Sentiment_Category"] = reviews.apply(
-    lambda row: categorize_sentiment(row["Sentiment_Score"], row["Rating"]), axis=1
-)
-
-# Step 3 — Bucket into score ranges for distribution analysis
-reviews["Sentiment_Bucket"] = reviews["Sentiment_Score"].apply(bucket_sentiment)
-```
-
-**Sentiment Categories:** `Positive` · `Negative` · `Mixed Positive` · `Mixed Negative` · `Neutral`
-
-> A dual-signal approach (VADER score + star rating) is used because text sentiment and numeric ratings do not always align — this improves classification accuracy.
-
+- Imported the nltk library and downloaded the VADER (Valence Aware Dictionary and sEntiment Reasoner) lexicon — a pre-trained, rule-based sentiment tool designed for short informal texts like customer reviews that requires no model training — then initialized a SentimentIntensityAnalyzer instance as the core scoring engine for the pipeline.
+- Defined a sentiment score function to extract the compound score from each review text — a normalized value ranging from -1.0 (most negative) to +1.0 (most positive) — selected because it consolidates positive, negative, and neutral signals into a single rankable metric suitable for aggregation and comparison across all 1,363 reviews.
+- Defined a sentiment categorization function using a dual-signal approach — combining the VADER text score with the customer's numeric star rating — to produce five output labels: Positive, Mixed Positive, Neutral, Mixed Negative, and Negative, accounting for cases where review language and star ratings contradict each other.
+- Defined a sentiment bucketing function to assign each review to a labeled compound score range (e.g., "Highly Positive: 0.5 to 1.0") independent of the star rating, enabling distribution-level analysis of raw sentiment strength across the full review corpus.
+- Applied all three functions sequentially across the Reviews DataFrame to populate three new columns — Sentiment_Score, Sentiment_Category, and Sentiment_Bucket — then previewed the enriched output to verify correct computation before exporting the final dataset for SQL aggregation and Power BI reporting.
 ---
 
 ## 🗄️ Step 2 — SQL: Analytical Queries
-
-All 9 queries are in [`sql/marketing_analysis_queries.sql`](sql/marketing_analysis_queries.sql).
 
 | # | Query | Tables Used | Purpose |
 |---|-------|-------------|---------|
@@ -212,27 +198,3 @@ An average rating of 3.69 sits just below the 4.0 trust threshold. The ~300 nega
 | Environment | Jupyter Notebook |
 
 ---
-
-## 🚀 Getting Started
-
-### Prerequisites
-```bash
-pip install pandas numpy nltk
-python -c "import nltk; nltk.download('vader_lexicon')"
-```
-
-### Run the Pipeline
-```bash
-# 1. Clone the repo
-git clone https://github.com/your-username/retail-marketing-analytics.git
-cd retail-marketing-analytics
-
-# 2. Run the cleaning notebook
-jupyter notebook notebooks/data_cleaning_preprocessing.ipynb
-
-# 3. Execute SQL queries against your database
-# Load cleaned CSVs into MySQL/PostgreSQL, then run:
-# sql/marketing_analysis_queries.sql
-
-# 4. Open Power BI
-# Load outputs/ CSVs into dashboard/Retail_Marketing_Analytics.pbix
